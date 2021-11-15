@@ -1,0 +1,12 @@
+{
+  "name": "private-NFT-transfer",
+  "version": "0.1",
+  "main": "index.js",
+  "repository": "git@github.com:diwangs/private-NFT-transfer.git",
+  "author": "diwangs <diwangs@cs.jhu.edu>",
+  "license": "GPLv3",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.3.3",
+    "truffle": "^5.4.19"
+  }
+}
