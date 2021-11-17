@@ -43,4 +43,25 @@ contract("DummyNFT", accounts => {
                 );
             })
     });
+    it("Test awardItem balanceOf",() => {
+        let nft;
+
+        return DummyNFT.deploy()
+            .then(instance => {
+                nft = instance
+                return nft.awardItem(account[0],"Some URL", {from: account[0]})
+            })
+            .then(result =>{
+                tokenId = result.logs[0].args.tokenId
+                return nft.balanceOf(tokenId)
+            })
+            .then(balanceOf =>{
+                console.log("address of ", owner)
+                assert.equal(
+                    "Owner address",
+                    balanceOf,
+                    "The address of the balance of this onwer doesn't exist"
+                );
+            })
+    })
 });
