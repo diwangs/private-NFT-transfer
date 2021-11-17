@@ -7,6 +7,7 @@
   "license": "GPLv3",
   "dependencies": {
     "@openzeppelin/contracts": "^4.3.3",
+    "solc": "^0.8.10",
     "truffle": "^5.4.19"
   }
 }
