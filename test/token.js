@@ -63,5 +63,28 @@ contract("DummyNFT", accounts => {
                     "The address of the balance of this onwer doesn't exist"
                 );
             })
+    });
+    it("Test awardItem transferFrom",() =>{
+        let nft;
+
+        return DummyNFT.deploy()
+            .then(instance =>{
+                nft = instance
+                return nft.awardItem(axccont[0],"Some URL",{from:account[0]})
+            })
+            .then(result =>{
+                tokenId = result.logs[0].args.tokenId
+                return nft.transferFrom(from, to, tokenId)
+            })
+            .then(transferFrom =>{
+                console.log("transferFrom", from, to, tokenId)
+                assert.equal(
+                    "TransferFrom",
+                    from,
+                    to,
+                    tokenId,
+                    "the zero address is invalid"
+                );
+            })
     })
 });
