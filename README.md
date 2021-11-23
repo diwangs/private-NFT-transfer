@@ -27,5 +27,43 @@
 		- ZK bids?
 
 # Plan
-- Create dummy ERC-721 token and another contracts that stores them
-- Modify the deposit contract for ZK proving?
+## Zerocoin / Tornado Cash: Static value
+- $cm = h(s || h(sn))$
+	- Serial number = nullifier
+- $coin = (s, sn, cm)$
+- Deposit
+	- Send coin, 
+	- Send $cm$ to $cm_list$
+		- Advanced -> the list is actually merkle tree
+- Withdraw
+	- Send $h(sn)$, check if $sn$ has been spent in the past
+	- Generate zk-proof that I know $s$ such that $h(s || h(sn))$ appears on the $cm_list$
+
+## Zerocash: Dynamic Value + Sending
+- $cm = h(s || h(pk || id || rho))$
+	- $pk$ -> address? or $h(secret_key)$ for easier proving
+	- $sn = h(rho)$ 
+- $token = (pk, id, rho, s, cm)$
+- __Deposit (mint)__
+	- Client generate $rho$, $s$ and keep it secret (as a note)
+	- Send token
+		- tx = $cm, k, id$ 
+	- Compute $cm$ and send $cm$ to $cm_list$
+- __Send (pour)__
+	- Create new $rho$, $s$ for a new token commitment 
+	- Create proof that
+		- Sender owns the old token
+			- Old public key matches the sender private key
+		- Old commitments appear on the ledger
+			- Merkle tree path
+		- Revealed serial number is computed correctly
+		- Old and new token commitments are well-formed
+			- $cm$ follows the formula
+		- Old id == new id
+	- Send old $sn$, mark in boolean hash table as spent
+	- Send new $cm$, insert to the merkle-tree
+	- Send new $id$, $rho$, $s$ to the recipient (out-of-band)
+- __Withdraw (spend)__
+	- Proof that I know $id, rho, s$  such that $cm$ appears in the $cm_list$ 
+	- Send proof and $sn$
+	- Check $sn$, withdraw the token
