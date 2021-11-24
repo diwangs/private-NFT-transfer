@@ -90,7 +90,15 @@ module.exports = {
       //  },
       //  evmVersion: "byzantium"
       // }
-    }
+    },
+    external: {
+      command: 'node ./scripts/compileHasher.js',
+      targets: [
+        {
+          path: './build/Hasher.json',
+        },
+      ],
+    },
   },
 
   // Truffle DB is currently disabled by default; to enable it, change enabled:

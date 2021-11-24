@@ -1,7 +1,5 @@
 const Migrations = artifacts.require("Migrations");
-const UserInfo = artifacts.require("UserInfo");
 
-module.exports = function (deployer) {
-  deployer.deploy(Migrations);
-  deployer.deploy(UserInfo);
+module.exports = async function (deployer, network, accounts) {
+  await deployer.deploy(Migrations);
 };
