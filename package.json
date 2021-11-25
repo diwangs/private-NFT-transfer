@@ -7,11 +7,24 @@
   "license": "GPLv3",
   "dependencies": {
     "@openzeppelin/contracts": "^4.3.3",
-    "circom": "^0.5.46",
+    "circom": "^0.0.35",
     "circomlib": "git+https://github.com/tornadocash/circomlib.git#c372f14d324d57339c88451834bf2824e73bbdbc",
+    "fixed-merkle-tree": "^0.6.0",
     "snarkjs": "git+https://github.com/tornadocash/snarkjs.git#869181cfaf7526fe8972073d31655493a04326d5",
     "solc": "^0.8.10",
     "truffle": "^5.4.19",
-    "truffle-assertions": "^0.9.2"
+    "truffle-assertions": "^0.9.2",
+    "websnark": "git+https://github.com/tornadocash/websnark.git#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
+  },
+  "scripts": {
+    "clean": "rm -r build",
+    "build:circuit:compile": "npx circom circuits/withdraw.circom -o build/circuits/withdraw.json && npx snarkjs info -c build/circuits/withdraw.json",
+    "build:circuit:setup": "npx snarkjs setup --protocol groth -c build/circuits/withdraw.json --pk build/circuits/withdraw_proving_key.json --vk build/circuits/withdraw_verification_key.json",
+    "build:circuit:bin": "node node_modules/websnark/tools/buildpkey.js -i build/circuits/withdraw_proving_key.json -o build/circuits/withdraw_proving_key.bin",
+    "build:circuit:contract": "npx snarkjs generateverifier -v build/circuits/WithdrawVerifier.sol --vk build/circuits/withdraw_verification_key.json",
+    "build:circuit:contractcopy": "sed 's/\\^0.5.0/>=0.5.0/g' build/circuits/WithdrawVerifier.sol | sed 's/gas/gas()/g' | sed 's/@return//g' | sed 's/contract Verifier/contract WithdrawVerifier/g' > contracts/WithdrawVerifier.sol",
+    "build:circuit": "mkdir -p build/circuits && npm run build:circuit:compile && npm run build:circuit:setup && npm run build:circuit:contract && npm run build:circuit:contractcopy",
+    "build:contract": "npx truffle compile",
+    "build": "mkdir build && npm run build:circuit && npm run build:contract"
   }
 }

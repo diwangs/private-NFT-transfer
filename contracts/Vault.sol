@@ -16,11 +16,11 @@ import "./MerkleTreeWithHistory.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IVerifier {
-  function verifyProof(bytes memory _proof, uint256[6] memory _input) external returns (bool);
+  function verifyProof(bytes memory _proof, uint256[2] memory _input) external returns (bool);
 }
 
 contract Vault is MerkleTreeWithHistory, ReentrancyGuard {
-  // IVerifier public immutable verifier;
+  IVerifier public immutable withdrawVerifier;
   // uint256 public denomination;
 
   mapping(bytes32 => bool) public nullifierHashes;
@@ -28,23 +28,23 @@ contract Vault is MerkleTreeWithHistory, ReentrancyGuard {
   mapping(bytes32 => bool) public commitments;
 
   event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp);
-  // event Withdrawal(address to, bytes32 nullifierHash, address indexed relayer, uint256 fee);
+  event Withdrawal(bytes32 nullifierHash);
 
   /**
     @dev The constructor
-    _verifier the address of SNARK verifier for this contract
+    @param _withdrawVerifier the address of SNARK verifier for this contract
     @param _hasher the address of MiMC hash contract
     _denomination transfer amount for each deposit
     @param _merkleTreeHeight the height of deposits' Merkle Tree
   */
   constructor(
-    // IVerifier _verifier,
+    IVerifier _withdrawVerifier,
     IHasher _hasher,
     // uint256 _denomination,
     uint32 _merkleTreeHeight
   ) MerkleTreeWithHistory(_merkleTreeHeight, _hasher) {
     // require(_denomination > 0, "denomination should be greater than 0");
-    // verifier = _verifier;
+    withdrawVerifier = _withdrawVerifier;
     // denomination = _denomination;
   }
 
@@ -73,32 +73,29 @@ contract Vault is MerkleTreeWithHistory, ReentrancyGuard {
       - the recipient of funds
       - optional fee that goes to the transaction sender (usually a relay)
   */
-  // function withdraw(
-  //   bytes calldata _proof,
-  //   bytes32 _root,
-  //   bytes32 _nullifierHash,
-  //   address payable _recipient,
-  //   address payable _relayer,
-  //   uint256 _fee,
-  //   uint256 _refund
-  // ) external payable nonReentrant {
-  //   require(_fee <= denomination, "Fee exceeds transfer value");
-  //   require(!nullifierHashes[_nullifierHash], "The note has been already spent");
-  //   require(isKnownRoot(_root), "Cannot find your merkle root"); // Make sure to use a recent one
-  //   require(
-  //     verifier.verifyProof(
-  //       _proof,
-  //       [uint256(_root), uint256(_nullifierHash), uint256(_recipient), uint256(_relayer), _fee, _refund]
-  //     ),
-  //     "Invalid withdraw proof"
-  //   );
+  function withdraw(
+    bytes calldata _proof,
+    bytes32 _root,
+    bytes32 _nullifierHash
+  ) external payable nonReentrant {
+    // require(_fee <= denomination, "Fee exceeds transfer value");
+    require(!isSpent(_nullifierHash), "The note has been already spent");
+    require(isKnownRoot(_root), "Cannot find your merkle root"); // Make sure to use a recent one
+    require(
+      withdrawVerifier.verifyProof(
+        _proof,
+        [uint256(_root), uint256(_nullifierHash)]
+      ),
+      "Invalid withdraw proof"
+    );
 
-  //   nullifierHashes[_nullifierHash] = true;
-  //   _processWithdraw(_recipient, _relayer, _fee, _refund);
-  //   emit Withdrawal(_recipient, _nullifierHash, _relayer, _fee);
-  // }
+    nullifierHashes[_nullifierHash] = true;
+    // _processWithdraw(_recipient, _relayer, _fee, _refund);
 
-  // /** @dev this function is defined in a child contract */
+    emit Withdrawal(_nullifierHash);
+  }
+
+  /** @dev this function is defined in a child contract */
   // function _processWithdraw(
   //   address payable _recipient,
   //   address payable _relayer,
