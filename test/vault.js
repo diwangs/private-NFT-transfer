@@ -40,7 +40,7 @@ contract("Vault", accounts => {
         tx = await vault.withdraw(proof, ...args)
         
         truffleAssert.eventEmitted(tx, 'Withdrawal', (e) => {
-            return e.nullifierHash == deposit.nullifierHash
+            return e.nullifierHash == toHex(deposit.nullifierHash)
         })
     })
 })
@@ -119,7 +119,6 @@ function createDeposit({ nullifier, secret }) {
  */
  async function generateMerkleProof(tornado, deposit) {
     // Get all deposit events from smart contract and assemble merkle tree from them
-    console.log('Getting current state from tornado contract')
     const events = await tornado.getPastEvents('Deposit', { fromBlock: 0, toBlock: 'latest' })
     const leaves = events
       .sort((a, b) => a.returnValues.leafIndex - b.returnValues.leafIndex) // Sort events in chronological order
