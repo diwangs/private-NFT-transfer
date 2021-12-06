@@ -28,9 +28,11 @@ contract("Vault", accounts => {
         const s1 = snarkjs.bigInt("254080219567091772673909445246567392088208036796494585251815984474602972369")
         const n2 = snarkjs.bigInt("218278570709644582400354933544764600979629809596418196314625408049795099009")
         const s2 = snarkjs.bigInt("381081628386906533194738143309184053498881367127906410807449526152710014129")
-        const toyUidId = snarkjs.bigInt("225786548703635696515976828206103424260018282918369313743154006793831650038")
+        const toyUidId = snarkjs.bigInt("1951827372864681141196007520758859241242596259239658408306857277094119222454")
+        // const toyUidId = rbigint(32)
         const toyUidContract = snarkjs.bigInt("727964461428934226824242621095672674158845536690")
-        
+        console.log(toyUidId)
+
         const deposit1 = createDeposit({ 
             nullifier: n1, 
             secretId: s1,
@@ -56,7 +58,6 @@ contract("Vault", accounts => {
         // Send
         console.log("Send") 
         const r1 = await generateSendProof({ vault, oldDeposit: deposit1, newDeposit: deposit2 })
-        // console.log(r1)
         tx = await vault.send(r1.proof, ...r1.args)
 
         truffleAssert.eventEmitted(tx, 'Withdrawal', (e) => {
@@ -69,7 +70,6 @@ contract("Vault", accounts => {
         // Withdraw
         console.log("Withdraw") 
         const r2 = await generateWithdrawProof({ vault, deposit: deposit2 })
-        // console.log(r2)
         tx = await vault.withdraw(r2.proof, ...r2.args)
         
         truffleAssert.eventEmitted(tx, 'Withdrawal', (e) => {
@@ -95,7 +95,7 @@ function createDeposit({ nullifier, secretId, tokenUidId, tokenUidContract }) {
     deposit.preimage = Buffer.concat([
         deposit.nullifier.leInt2Buff(31), 
         deposit.publicId.leInt2Buff(32), 
-        deposit.tokenUidId.leInt2Buff(31),
+        deposit.tokenUidId.leInt2Buff(32),
         deposit.tokenUidContract.leInt2Buff(20),
     ])
     deposit.commitment = pedersenHash(deposit.preimage)

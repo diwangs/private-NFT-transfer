@@ -61,19 +61,26 @@ template CommitmentHasher() {
     signal output commitment;
     signal output nullifierHash;
 
-    component commitmentHasher = Pedersen(912);
+    component commitmentHasher = Pedersen(920);
     component nullifierHasher = Pedersen(248);
 
     component nullifierBits = Num2Bits(248);
     component publicIdBits = Num2Bits(256);
-    component tokenUidIdBits = Num2Bits(248); // take off the most significant bit
+    component tokenUidIdBits = Num2Bits(256);
     component tokenUidContractBits = Num2Bits(160);
     nullifierBits.in <== nullifier;
     publicIdBits.in <== publicId;
     tokenUidIdBits.in <== tokenUidId;
     tokenUidContractBits.in <== tokenUidContract;
 
-    for (var i = 0; i < 248; i++) {
+    for (var i = 0; i < 160; i++) {
+        nullifierHasher.in[i] <== nullifierBits.out[i];
+        commitmentHasher.in[i] <== nullifierBits.out[i];
+        commitmentHasher.in[i + 248] <== publicIdBits.out[i];
+        commitmentHasher.in[i + 504] <== tokenUidIdBits.out[i];
+        commitmentHasher.in[i + 760] <== tokenUidContractBits.out[i];
+    }
+    for (var i = 160; i < 248; i++) {
         nullifierHasher.in[i] <== nullifierBits.out[i];
         commitmentHasher.in[i] <== nullifierBits.out[i];
         commitmentHasher.in[i + 248] <== publicIdBits.out[i];
@@ -81,9 +88,7 @@ template CommitmentHasher() {
     }
     for (var i = 248; i < 256; i++) {
         commitmentHasher.in[i + 248] <== publicIdBits.out[i];
-    }
-    for (var i = 0; i < 160; i++) {
-        commitmentHasher.in[i + 752] <== tokenUidContractBits.out[i];
+        commitmentHasher.in[i + 504] <== tokenUidIdBits.out[i];
     }
 
     commitment <== commitmentHasher.out[0];
