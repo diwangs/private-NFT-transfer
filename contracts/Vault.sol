@@ -15,12 +15,17 @@ pragma solidity ^0.8.0;
 import "./MerkleTreeWithHistory.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-interface IVerifier {
+interface IVerifier2 {
   function verifyProof(bytes memory _proof, uint256[2] memory _input) external returns (bool);
 }
 
+interface IVerifier3 {
+  function verifyProof(bytes memory _proof, uint256[3] memory _input) external returns (bool);
+}
+
 contract Vault is MerkleTreeWithHistory, ReentrancyGuard {
-  IVerifier public immutable withdrawVerifier;
+  IVerifier2 public immutable withdrawVerifier;
+  IVerifier3 public immutable sendVerifier;
   // uint256 public denomination;
 
   mapping(bytes32 => bool) public nullifierHashes;
@@ -38,13 +43,15 @@ contract Vault is MerkleTreeWithHistory, ReentrancyGuard {
     @param _merkleTreeHeight the height of deposits' Merkle Tree
   */
   constructor(
-    IVerifier _withdrawVerifier,
+    IVerifier2 _withdrawVerifier,
+    IVerifier3 _sendVerifier,
     IHasher _hasher,
     // uint256 _denomination,
     uint32 _merkleTreeHeight
   ) MerkleTreeWithHistory(_merkleTreeHeight, _hasher) {
     // require(_denomination > 0, "denomination should be greater than 0");
     withdrawVerifier = _withdrawVerifier;
+    sendVerifier = _sendVerifier;
     // denomination = _denomination;
   }
 
@@ -102,6 +109,30 @@ contract Vault is MerkleTreeWithHistory, ReentrancyGuard {
   //   uint256 _fee,
   //   uint256 _refund
   // ) internal virtual;
+
+  function send(
+    bytes calldata _proof,
+    bytes32 _oldRoot,
+    bytes32 _oldNullifierHash,
+    bytes32 _newCommitment
+  ) external nonReentrant {
+    require(!isSpent(_oldNullifierHash), "The note has been already spent");
+    require(isKnownRoot(_oldRoot), "Cannot find your merkle root"); // Make sure to use a recent one
+    require(
+      sendVerifier.verifyProof(
+        _proof,
+        [uint256(_oldRoot), uint256(_oldNullifierHash), uint256(_newCommitment)]
+      ),
+      "Invalid send proof"
+    );
+
+    nullifierHashes[_oldNullifierHash] = true;
+    emit Withdrawal(_oldNullifierHash);
+
+    uint32 insertedIndex = _insert(_newCommitment);
+    commitments[_newCommitment] = true;
+    emit Deposit(_newCommitment, insertedIndex, block.timestamp);
+  }
 
   /** @dev whether a note is already spent */
   function isSpent(bytes32 _nullifierHash) public view returns (bool) {

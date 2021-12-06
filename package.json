@@ -18,13 +18,19 @@
   },
   "scripts": {
     "clean": "rm -r build",
-    "build:circuit:compile": "npx circom circuits/withdraw.circom -o build/circuits/withdraw.json && npx snarkjs info -c build/circuits/withdraw.json",
-    "build:circuit:setup": "npx snarkjs setup --protocol groth -c build/circuits/withdraw.json --pk build/circuits/withdraw_proving_key.json --vk build/circuits/withdraw_verification_key.json",
-    "build:circuit:bin": "node node_modules/websnark/tools/buildpkey.js -i build/circuits/withdraw_proving_key.json -o build/circuits/withdraw_proving_key.bin",
-    "build:circuit:contract": "npx snarkjs generateverifier -v build/circuits/WithdrawVerifier.sol --vk build/circuits/withdraw_verification_key.json",
-    "build:circuit:contractcopy": "sed 's/\\^0.5.0/>=0.5.0/g' build/circuits/WithdrawVerifier.sol | sed 's/gas/gas()/g' | sed 's/@return//g' | sed 's/contract Verifier/contract WithdrawVerifier/g' > contracts/WithdrawVerifier.sol",
-    "build:circuit": "mkdir -p build/circuits && npm run build:circuit:compile && npm run build:circuit:setup && npm run build:circuit:contract && npm run build:circuit:contractcopy",
+    "build:circuit:withdraw:compile": "npx circom circuits/withdraw.circom -o build/circuits/withdraw.json && npx snarkjs info -c build/circuits/withdraw.json",
+    "build:circuit:withdraw:setup": "npx snarkjs setup --protocol groth -c build/circuits/withdraw.json --pk build/circuits/withdraw_proving_key.json --vk build/circuits/withdraw_verification_key.json",
+    "build:circuit:withdraw:bin": "node node_modules/websnark/tools/buildpkey.js -i build/circuits/withdraw_proving_key.json -o build/circuits/withdraw_proving_key.bin",
+    "build:circuit:withdraw:contract": "npx snarkjs generateverifier -v build/circuits/WithdrawVerifier.sol --vk build/circuits/withdraw_verification_key.json",
+    "build:circuit:withdraw:contractcopy": "sed 's/\\^0.5.0/>=0.5.0/g' build/circuits/WithdrawVerifier.sol | sed 's/gas/gas()/g' | sed 's/@return//g' | sed 's/contract Verifier/contract WithdrawVerifier/g' > contracts/WithdrawVerifier.sol",
+    "build:circuit:withdraw": "npm run build:circuit:withdraw:compile && npm run build:circuit:withdraw:setup && npm run build:circuit:withdraw:contract && npm run build:circuit:withdraw:contractcopy",
+    "build:circuit:send:compile": "npx circom circuits/send.circom -o build/circuits/send.json && npx snarkjs info -c build/circuits/send.json",
+    "build:circuit:send:setup": "npx snarkjs setup --protocol groth -c build/circuits/send.json --pk build/circuits/send_proving_key.json --vk build/circuits/send_verification_key.json",
+    "build:circuit:send:contract": "npx snarkjs generateverifier -v build/circuits/SendVerifier.sol --vk build/circuits/send_verification_key.json",
+    "build:circuit:send:contractcopy": "sed 's/\\^0.5.0/>=0.5.0/g' build/circuits/SendVerifier.sol | sed 's/gas/gas()/g' | sed 's/@return//g' | sed 's/contract Verifier/contract SendVerifier/g' > contracts/SendVerifier.sol",
+    "build:circuit:send": "npm run build:circuit:send:compile && npm run build:circuit:send:setup && npm run build:circuit:send:contract && npm run build:circuit:send:contractcopy",
+    "build:circuit": "mkdir -p build/circuits && npm run build:circuit:withdraw && npm run build:circuit:send",
     "build:contract": "npx truffle compile",
-    "build": "mkdir build && npm run build:circuit && npm run build:contract"
+    "build": "mkdir -p build && npm run build:circuit && npm run build:contract"
   }
 }

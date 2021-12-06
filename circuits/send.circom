@@ -1,35 +1,49 @@
-include "../node_modules/circomlib/circuits/bitify.circom";
-include "../node_modules/circomlib/circuits/pedersen.circom";
-include "../node_modules/circomlib/circuits/comparators.circom";
 include "merkleTree.circom";
 
-template CommitmentHasher() {
-    signal input nullifier;
-    signal input secret;
-    signal output commitment;
-    signal output nullifierHash;
-
-    component commitmentHasher = Pedersen(496);
-    component nullifierHasher = Pedersen(248);
-    component nullifierBits = Num2Bits(248);
-    component secretBits = Num2Bits(248);
-    nullifierBits.in <== nullifier;
-    secretBits.in <== secret;
-    for (var i = 0; i < 248; i++) {
-        nullifierHasher.in[i] <== nullifierBits.out[i];
-        commitmentHasher.in[i] <== nullifierBits.out[i];
-        commitmentHasher.in[i + 248] <== secretBits.out[i];
-    }
-
-    commitment <== commitmentHasher.out[0];
-    nullifierHash <== nullifierHasher.out[0];
-}
 //create proof of old commitment on ledger and sender owns the old token 
 template Send(levels){
-    signal private input rho;
-    signal private input secret;
-    signal input key;
-    signal input oldSn;
-    signal private input merkleTree[levels];
+    signal input oldRoot;
+    signal input oldNullifierHash;
+    signal input newCommitment;
+    signal private input oldNullifier;
+    signal private input oldSecret;
+    signal private input oldTokenUidId;
+    signal private input oldTokenUidContract;
+    signal private input oldPathElements[levels];
+    signal private input oldPathIndices[levels];
+    signal private input newNullifier;
+    signal private input newSecret;
+    signal private input newTokenUidId;
+    signal private input newTokenUidContract;
 
+    // Old commitment is well-formed
+    component oldHasher = CommitmentHasher();
+    oldHasher.nullifier <== oldNullifier;
+    oldHasher.secret <== oldSecret;
+    oldHasher.tokenUidId  <== oldTokenUidId;
+    oldHasher.tokenUidContract <== oldTokenUidContract;
+    oldHasher.nullifierHash === oldNullifierHash; // Serial number computed correctly?
+
+    // Old commitment appears on the ledger
+    component tree = MerkleTreeChecker(levels);
+    tree.leaf <== oldHasher.commitment;
+    tree.root <== oldRoot;
+    for (var i = 0; i < levels; i++) {
+        tree.pathElements[i] <== oldPathElements[i];
+        tree.pathIndices[i] <== oldPathIndices[i];
+    }
+
+    // New commitment is well-formed
+    component newHasher = CommitmentHasher();
+    newHasher.nullifier <== newNullifier;
+    newHasher.secret <== newSecret;
+    newHasher.tokenUidId <== newTokenUidId;
+    newHasher.tokenUidContract <== newTokenUidContract;
+    newHasher.commitment === newCommitment;
+
+    // New commitment uid == old commitment uid
+    oldTokenUidId === newTokenUidId;
+    oldTokenUidContract === newTokenUidContract;
 }
+
+component main = Send(20);
