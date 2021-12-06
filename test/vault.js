@@ -33,14 +33,14 @@ contract("Vault", accounts => {
         
         const deposit1 = createDeposit({ 
             nullifier: n1, 
-            secret: s1,
+            secretId: s1,
             tokenUidId: toyUidId,
             tokenUidContract: toyUidContract,
         })
 
         const deposit2 = createDeposit({ 
             nullifier: n2, 
-            secret: s2,
+            secretId: s2,
             tokenUidId: toyUidId,
             tokenUidContract: toyUidContract,
         })
@@ -88,12 +88,13 @@ function toHex(number, length = 32) {
     return '0x' + str.padStart(length * 2, '0')
 }
 
-function createDeposit({ nullifier, secret, tokenUidId, tokenUidContract }) {
+function createDeposit({ nullifier, secretId, tokenUidId, tokenUidContract }) {
     // tokenUid = concat(address, tokenId) -> 20 + 32 = 52 bytes
-    const deposit = { nullifier, secret, tokenUidId, tokenUidContract }
+    const deposit = { nullifier, secretId, tokenUidId, tokenUidContract }
+    deposit.publicId = pedersenHash(deposit.secretId.leInt2Buff(31))
     deposit.preimage = Buffer.concat([
         deposit.nullifier.leInt2Buff(31), 
-        deposit.secret.leInt2Buff(31), 
+        deposit.publicId.leInt2Buff(32), 
         deposit.tokenUidId.leInt2Buff(31),
         deposit.tokenUidContract.leInt2Buff(20),
     ])
@@ -112,7 +113,7 @@ function createDeposit({ nullifier, secret, tokenUidId, tokenUidContract }) {
  * @param fee Relayer fee
  * @param refund Receive ether for exchanged tokens
  */
- async function generateWithdrawProof({ vault, deposit}) {
+ async function generateWithdrawProof({ vault, deposit }) {
     circuit = require(__dirname + '/../build/circuits/withdraw.json')
     // proving_key = fs.readFileSync(__dirname + '/../build/circuits/withdraw_proving_key.bin').buffer
     // groth16 = await buildGroth16()
@@ -128,7 +129,7 @@ function createDeposit({ nullifier, secret, tokenUidId, tokenUidContract }) {
   
       // Private snark inputs
       nullifier: deposit.nullifier,
-      secret: deposit.secret,
+      secretId: deposit.secretId,
       tokenUidId: deposit.tokenUidId,
       tokenUidContract: deposit.tokenUidContract,
       pathElements: pathElements,
@@ -169,13 +170,13 @@ async function generateSendProof({ vault, oldDeposit, newDeposit }) {
   
       // Private snark inputs
       oldNullifier: oldDeposit.nullifier,
-      oldSecret: oldDeposit.secret,
+      oldSecretId: oldDeposit.secretId,
       oldTokenUidId: oldDeposit.tokenUidId,
       oldTokenUidContract: oldDeposit.tokenUidContract,
       oldPathElements: pathElements,
       oldPathIndices: pathIndices,
       newNullifier: newDeposit.nullifier,
-      newSecret: newDeposit.secret,
+      newPublicId: newDeposit.publicId,
       newTokenUidId: newDeposit.tokenUidId,
       newTokenUidContract: newDeposit.tokenUidContract,
     }

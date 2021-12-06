@@ -52,35 +52,38 @@ template MerkleTreeChecker(levels) {
     root === hashers[levels - 1].hash;
 }
 
-// computes Pedersen(nullifier + secret)
+// computes Pedersen(nullifier + publicId)
 template CommitmentHasher() {
     signal input nullifier;
-    signal input secret;
+    signal input publicId;
     signal input tokenUidId;
     signal input tokenUidContract;
     signal output commitment;
     signal output nullifierHash;
 
-    component commitmentHasher = Pedersen(904);
+    component commitmentHasher = Pedersen(912);
     component nullifierHasher = Pedersen(248);
 
     component nullifierBits = Num2Bits(248);
-    component secretBits = Num2Bits(248);
+    component publicIdBits = Num2Bits(256);
     component tokenUidIdBits = Num2Bits(248); // take off the most significant bit
     component tokenUidContractBits = Num2Bits(160);
     nullifierBits.in <== nullifier;
-    secretBits.in <== secret;
+    publicIdBits.in <== publicId;
     tokenUidIdBits.in <== tokenUidId;
     tokenUidContractBits.in <== tokenUidContract;
 
     for (var i = 0; i < 248; i++) {
         nullifierHasher.in[i] <== nullifierBits.out[i];
         commitmentHasher.in[i] <== nullifierBits.out[i];
-        commitmentHasher.in[i + 248] <== secretBits.out[i];
-        commitmentHasher.in[i + 496] <== tokenUidIdBits.out[i];
+        commitmentHasher.in[i + 248] <== publicIdBits.out[i];
+        commitmentHasher.in[i + 504] <== tokenUidIdBits.out[i];
+    }
+    for (var i = 248; i < 256; i++) {
+        commitmentHasher.in[i + 248] <== publicIdBits.out[i];
     }
     for (var i = 0; i < 160; i++) {
-        commitmentHasher.in[i + 744] <== tokenUidContractBits.out[i];
+        commitmentHasher.in[i + 752] <== tokenUidContractBits.out[i];
     }
 
     commitment <== commitmentHasher.out[0];
