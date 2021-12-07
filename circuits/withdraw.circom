@@ -6,8 +6,8 @@ include "merkleTree.circom";
 template Withdraw(levels) {
     signal input root;
     signal input nullifierHash;
-    signal private input tokenUidId;
-    signal private input tokenUidContract;
+    signal input tokenUidId;
+    signal input tokenUidContract;
     signal private input nullifier;
     signal private input secretId;
     signal private input pathElements[levels];

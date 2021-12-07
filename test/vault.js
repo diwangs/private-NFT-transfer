@@ -3,6 +3,7 @@ const MERKLE_TREE_HEIGHT = 20
 const crypto = require('crypto')
 const circomlib = require('circomlib')
 const snarkjs = require('snarkjs')
+const BigNumber = require('bignumber.js')
 
 // for withdrawal
 // const buildGroth16 = require('websnark/src/groth16')
@@ -14,24 +15,32 @@ const fs = require('fs')
 const truffleAssert = require('truffle-assertions')
 const { execSync } = require('child_process')
 
+const Token = artifacts.require("UserInfo")
 const Vault = artifacts.require("Vault")
 
 contract("Vault", accounts => {
     let vault;
+    let token;
 
     beforeEach(async () => {
+        token = await Token.deployed()
         vault = await Vault.deployed() 
     })
     
     it("e2e test", async () => {
+        // mint token
+        const result = await token.awardItem.call(accounts[0], "Some URI")
+        await token.awardItem(accounts[0], "Some URI")
+
+        const tokenAddressHex = token.address.toLowerCase()
+        const vaultAddressHex = vault.address.toLowerCase()
+        const tokenAddressBN = new BigNumber(tokenAddressHex.slice(2), 16)
         const n1 = snarkjs.bigInt("272418632970930087013102078582984595767243027035861303396446195359448020486")
         const s1 = snarkjs.bigInt("254080219567091772673909445246567392088208036796494585251815984474602972369")
         const n2 = snarkjs.bigInt("218278570709644582400354933544764600979629809596418196314625408049795099009")
         const s2 = snarkjs.bigInt("381081628386906533194738143309184053498881367127906410807449526152710014129")
-        const toyUidId = snarkjs.bigInt("1951827372864681141196007520758859241242596259239658408306857277094119222454")
-        // const toyUidId = rbigint(32)
-        const toyUidContract = snarkjs.bigInt("727964461428934226824242621095672674158845536690")
-        console.log(toyUidId)
+        const toyUidId = snarkjs.bigInt(result.toString())
+        const toyUidContract = snarkjs.bigInt(tokenAddressBN.toString(10))
 
         const deposit1 = createDeposit({ 
             nullifier: n1, 
@@ -47,9 +56,13 @@ contract("Vault", accounts => {
             tokenUidContract: toyUidContract,
         })
 
+        // approve
+        const tokenIdHex = toHex(toyUidId)
+        await token.approve(vaultAddressHex, tokenIdHex, {from: accounts[0]})
+
         // Deposit
         console.log("Deposit") 
-        let tx = await vault.deposit(toHex(deposit1.commitment), {from: accounts[0]})
+        let tx = await vault.deposit(toHex(deposit1.commitment), toHex(toyUidId), tokenAddressHex, {from: accounts[0]})
 
         truffleAssert.eventEmitted(tx, 'Deposit', (e) => {
             return e.commitment == toHex(deposit1.commitment)
@@ -58,7 +71,7 @@ contract("Vault", accounts => {
         // Send
         console.log("Send") 
         const r1 = await generateSendProof({ vault, oldDeposit: deposit1, newDeposit: deposit2 })
-        tx = await vault.send(r1.proof, ...r1.args)
+        tx = await vault.send(r1.proof, ...r1.args, {from: accounts[0]})
 
         truffleAssert.eventEmitted(tx, 'Withdrawal', (e) => {
             return e.nullifierHash == toHex(deposit1.nullifierHash)
@@ -70,7 +83,7 @@ contract("Vault", accounts => {
         // Withdraw
         console.log("Withdraw") 
         const r2 = await generateWithdrawProof({ vault, deposit: deposit2 })
-        tx = await vault.withdraw(r2.proof, ...r2.args)
+        tx = await vault.withdraw(r2.proof, ...r2.args, {from: accounts[1]})
         
         truffleAssert.eventEmitted(tx, 'Withdrawal', (e) => {
             return e.nullifierHash == toHex(deposit2.nullifierHash)
@@ -126,12 +139,12 @@ function createDeposit({ nullifier, secretId, tokenUidId, tokenUidContract }) {
       // Public snark inputs
       root: root,
       nullifierHash: deposit.nullifierHash,
+      tokenUidId: deposit.tokenUidId,
+      tokenUidContract: deposit.tokenUidContract,
   
       // Private snark inputs
       nullifier: deposit.nullifier,
       secretId: deposit.secretId,
-      tokenUidId: deposit.tokenUidId,
-      tokenUidContract: deposit.tokenUidContract,
       pathElements: pathElements,
       pathIndices: pathIndices,
     }
@@ -148,6 +161,8 @@ function createDeposit({ nullifier, secretId, tokenUidId, tokenUidContract }) {
     const args = [
       toHex(input.root),
       toHex(input.nullifierHash),
+      toHex(input.tokenUidId),
+      toHex(input.tokenUidContract)
     ]
 
     return { proof, args }

@@ -7,6 +7,7 @@
   "license": "GPLv3",
   "dependencies": {
     "@openzeppelin/contracts": "^4.3.3",
+    "bignumber.js": "^9.0.1",
     "circom": "^0.0.35",
     "circomlib": "git+https://github.com/tornadocash/circomlib.git#c372f14d324d57339c88451834bf2824e73bbdbc",
     "fixed-merkle-tree": "^0.6.0",
