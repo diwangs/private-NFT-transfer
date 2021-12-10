@@ -1,69 +1,47 @@
-# Ethereum Ecosystem
-- Standard token -> ERC-20
-- NFT -> a standard (ERC-721)
+# Private NFT Transfer 🎨
+Anonymously transfer ERC-721 NFT with zero-knowledge proofs
 
-# Ethereum and JavaScript
-- MetaMask
-- web3.js
-- Ganache
+## Commands
+### Build 
+- Build all circuits and contracts
+```
+npm run build
+```
 
-# ZK-SNARK Circuits
-- Circom
-- Flow:
-	- ZK proof generation client (web, circom)
-	- ZK proof verification to on Solidity (other contract)
+### Test
+- End-to-end test: deposit, send, withdraw
+- Make sure that your absolute path doesn't contain whitespaces
+```
+npx truffle test test/vault.js
+```
 
-# ZK-SNARK Transfer
-- Not interested in hiding the attributes, only the owner
-- ERC-721 is owned by the contract, needs to create circuits that transfers ownership internally
-- Sends withdrawal / ownership proofs off-chain (semi-honest?)
-	- Withdrawal proofs and payment are disconnected
-- Flow possibilities:
-	- Arbitrary transaction between two parties
-		- Proves that transaction happens without revealing sender and receiver
-		- Needs to record the sequence of proofs?
-		- Privacy is as good as the amount of users in the system
-	- Buyer bids to creator, creator sends it to buyer
-		- ZK bids?
+## Usage Flow and Comparison With tornado.cash
+The flow of this app is similar to that of tornado.cash. The contract acts like some sort of mixnet pool:
+1. User deposit their token to the contract with their proof pre-image commitment
+2. Some time later, user withdraw their token by providing a zk-proof of the knowledge of those pre-image
+3. The contract invalidates the commitment to prevent double spending
 
-# Plan
-## Zerocoin / Tornado Cash: Static value
-- $cm = h(s || h(sn))$
-	- Serial number = nullifier
-- $coin = (s, sn, cm)$
-- Deposit
-	- Send coin, 
-	- Send $cm$ to $cm_list$
-		- Advanced -> the list is actually merkle tree
-- Withdraw
-	- Send $h(sn)$, check if $sn$ has been spent in the past
-	- Generate zk-proof that I know $s$ such that $h(s || h(sn))$ appears on the $cm_list$
+This original flow however, doesn't really work for NFT. The non-fungible nature of the token is itself an identifying information that is not hidden by this scheme (i.e. you can infer the previous owner of the token by following the transaction graph of _that particular token_) 
 
-## Zerocash: Dynamic Value + Sending
-- $cm = h(s || h(pk || id || rho))$
-	- $pk$ -> address? or $h(secret_key)$ for easier proving
-	- $sn = h(rho)$ 
-- $token = (pk, id, rho, s, cm)$
-- __Deposit (mint)__
-	- Client generate $rho$, $s$ and keep it secret (as a note)
-	- Send token
-		- tx = $cm, k, id$ 
-	- Compute $cm$ and send $cm$ to $cm_list$
-- __Send (pour)__
-	- Create new $rho$, $s$ for a new token commitment 
-	- Create proof that
-		- Sender owns the old token
-			- Old public key matches the sender private key
-		- Old commitments appear on the ledger
-			- Merkle tree path
-		- Revealed serial number is computed correctly
-		- Old and new token commitments are well-formed
-			- $cm$ follows the formula
-		- Old id == new id
-	- Send old $sn$, mark in boolean hash table as spent
-	- Send new $cm$, insert to the merkle-tree
-	- Send new $id$, $rho$, $s$ to the recipient (out-of-band)
-- __Withdraw (spend)__
-	- Proof that I know $id, rho, s$  such that $cm$ appears in the $cm_list$ 
-	- Send proof and $sn$
-	- Check $sn$, withdraw the token
+We solve this problem by (among many other things) adding a 'send' function that anonymously changes the rightful withdrawer of the token while keeping the token inside the contract, thus hiding the transaction graph.
+
+## Details
+### Second Address
+We added an additional keypair for a user to identify themselves within the system. In other words, in order anonymously send an NFT to someone else, you don't provide your Ethereum address. Instead, you use this second address from the public key of this new keypair.
+
+We feel the need to introduce a new address because of the lack of ECDSA (signing algorithm used by Ethereum) library in current SNARK toolbox (circom and zokrates only supports EdDSA). You can think of this address as having a similar function to z-address in Zcash.
+
+Currently, we just use a simple random bits as our secret key and its Pedersen hash as the public key / address.
+
+### Commitment Structure
+The proof pre-image commitment consists of 3 things:
+- __Second address__, to signify the rightful withdrawer of a token
+- __Nullifier__, to signify the validity of the commitment and prevent double-spending
+- __Token ID__, to signify which token is backed by this commitment
+
+### Send Function
+While the deposit and withdrawal functionality of this project is similar to tornado.cash with some minor adjustments, the send functionality is novel. Its high-level function is basically a combination of withdrawal and deposit, and is similar to the 'Pour' functionality from the Zerocash paper:
+- User proves that they own the token (i.e. proves that they know the commitment pre-image)
+- User submits a new commitment signifying the new owner
+- User proves that the Token ID of this new commitment is the same as the Token ID of the old commitment
+- The contract invalidates the old commitment  
